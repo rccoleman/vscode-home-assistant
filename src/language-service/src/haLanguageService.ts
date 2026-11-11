@@ -256,24 +256,16 @@ export class HomeAssistantLanguageService {
         }
       }
 
-      // Fetch the text before the error, this might be "!include"
-      const includeStartChar = Math.max(0, startChar - 9);
-      const includeEndChar = Math.max(0, startChar - 1);
-      
-      if (includeStartChar < includeEndChar) {
-        const possibleInclude = document.getText(
-          Range.create(
-            startLine,
-            includeStartChar,
-            endLine,
-            includeEndChar,
-          ),
-        );
-
-        // Skip errors about include, everything can be included
-        if (possibleInclude === "!include") {
-          continue;
-        }
+      // Skip errors about any include tag (!include, !include_dir_list,
+      // !include_dir_named, !include_dir_merge_list, !include_dir_merge_named),
+      // everything can be included. The diagnostic range starts after the tag.
+      const textBeforeError = document.getText(
+        Range.create(startLine, 0, startLine, startChar),
+      );
+      if (
+        /!include(?:_dir_(?:merge_)?(?:list|named))?\s+$/.test(textBeforeError)
+      ) {
+        continue;
       }
 
       diagnosticItem.severity = 1; // Convert all warnings to errors

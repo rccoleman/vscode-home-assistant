@@ -14,11 +14,14 @@ import {
 export type Selector =
   | ActionSelector
   | AddonSelector
+  | AppSelector
   | AreaSelector
   | AssistPipelineSelector
   | AttributeSelector
+  | AutomationBehaviorSelector
   | BackupLocationSelector
   | BooleanSelector
+  | ChooseSelector
   | ColorRGBSelector
   | ColorTempSelector
   | ConditionSelector
@@ -28,6 +31,7 @@ export type Selector =
   | CountrySelector
   | DateSelector
   | DateTimeSelector
+  | DeviceClassSelector
   | DeviceSelector
   | DurationSelector
   | EntitySelector
@@ -39,16 +43,21 @@ export type Selector =
   | LocationSelector
   | MediaSelector
   | NumberSelector
+  | NumericThresholdSelector
   | ObjectSelector
   | QRCodeSelector
   | SelectSelector
+  | SerialPortSelector
+  | StateClassSelector
   | StateSelector
+  | StatisticSelector
   | TargetSelector
   | TemplateSelector
   | TextSelector
   | ThemeSelector
   | TimeSelector
-  | TriggerSelector;
+  | TriggerSelector
+  | UnitOfMeasurementSelector;
 
 export interface ActionSelector {
   /**
@@ -394,6 +403,16 @@ interface EntitySelectorFilter {
    * https://www.home-assistant.io/docs/blueprint/selectors/#entity-selector
    */
   supported_features?: SupportedFeature | SupportedFeature[];
+  /**
+   * Limits the list of entities to entities that have a certain unit of measurement.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#entity-selector
+   */
+  unit_of_measurement?: string | string[];
+  /**
+   * Limits the list of entities to entities of devices matching the given device filter.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#entity-selector
+   */
+  device?: DeviceSelectorFilter;
 }
 
 export interface EntitySelector {
@@ -568,7 +587,25 @@ export interface MediaSelector {
    * The media selector is a powerful selector that allows a user to easily select media to play on a media device.
    * https://www.home-assistant.io/docs/blueprint/selectors/#media-selector
    */
-  media: null | Record<string, never>;
+  media: {
+    /**
+     * List of accepted media types (e.g. `image/*`).
+     * https://www.home-assistant.io/docs/blueprint/selectors/#media-selector
+     */
+    accept?: string[];
+
+    /**
+     * Allows selecting multiple media items.
+     * https://www.home-assistant.io/docs/blueprint/selectors/#media-selector
+     */
+    multiple?: boolean;
+
+    /**
+     * Allows uploading an image.
+     * https://www.home-assistant.io/docs/blueprint/selectors/#media-selector
+     */
+    image_upload?: boolean;
+  } | null;
 }
 
 export interface NumberSelector {
@@ -614,7 +651,45 @@ export interface ObjectSelector {
    * The object selector can be used to input arbitrary data in YAML form. This is useful for e.g. lists and dictionaries like service data.
    * https://www.home-assistant.io/docs/blueprint/selectors/#object-selector
    */
-  object: null | Record<string, never>;
+  object: {
+    /**
+     * A mapping of field names to field definitions, each with its own selector. Used to render a form for each object.
+     * https://www.home-assistant.io/docs/blueprint/selectors/#object-selector
+     */
+    fields?: Record<
+      string,
+      {
+        selector: Selector;
+        default?: unknown;
+        required?: boolean;
+        label?: string;
+      }
+    >;
+
+    /**
+     * Allows entering multiple objects. If set to `true`, the resulting value of this selector will be a list.
+     * https://www.home-assistant.io/docs/blueprint/selectors/#object-selector
+     */
+    multiple?: boolean;
+
+    /**
+     * The field used to label each item in the list of objects.
+     * https://www.home-assistant.io/docs/blueprint/selectors/#object-selector
+     */
+    label_field?: string;
+
+    /**
+     * The field used to describe each item in the list of objects.
+     * https://www.home-assistant.io/docs/blueprint/selectors/#object-selector
+     */
+    description_field?: string;
+
+    /**
+     * Translation key used for translating the selector.
+     * https://www.home-assistant.io/docs/blueprint/selectors/#object-selector
+     */
+    translation_key?: string;
+  } | null;
 }
 
 export interface QRCodeSelector {
@@ -686,18 +761,18 @@ export interface SelectSelector {
     options:
       | string[]
       | {
-        /**
+          /**
            * The description to show in the UI for this item.
            * https://www.home-assistant.io/docs/blueprint/selectors/#select-selector
            */
-        label: string;
+          label: string;
 
-        /**
+          /**
            * The value to return when this label is selected.
            * https://www.home-assistant.io/docs/blueprint/selectors/#select-selector
            */
-        value: string;
-      }[];
+          value: string;
+        }[];
   };
 }
 
@@ -732,6 +807,12 @@ export interface TargetSelector {
      * https://www.home-assistant.io/docs/blueprint/selectors/#target-selector
      */
     entity?: EntitySelectorFilter | EntitySelectorFilter[];
+
+    /**
+     * When set, only primary entities (not diagnostic or configuration entities) are targeted.
+     * https://www.home-assistant.io/docs/blueprint/selectors/#target-selector
+     */
+    primary_entities_only?: boolean;
   } | null;
 }
 
@@ -828,4 +909,191 @@ export interface TriggerSelector {
    * https://www.home-assistant.io/docs/blueprint/selectors/#trigger-selector
    */
   trigger: null | Record<string, never>;
+}
+
+export interface AppSelector {
+  /**
+   * The app selector allows the user to input an app slug. On the user interface, it will list all installed apps and use the slug of the selected app.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#app-selector
+   */
+  app: {
+    /**
+     * Limits the list of apps to those with the given name.
+     */
+    name?: string;
+
+    /**
+     * Limits the list of apps to those with the given slug.
+     */
+    slug?: string;
+  } | null;
+}
+
+export interface AutomationBehaviorSelector {
+  /**
+   * The automation behavior selector allows the user to choose how a trigger or condition behaves when it targets multiple entities.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#automation-behavior-selector
+   */
+  automation_behavior: {
+    /**
+     * Whether the selector is used for a trigger or a condition. Determines the available options.
+     */
+    mode: "trigger" | "condition";
+
+    /**
+     * Translation key used for translating the selector.
+     */
+    translation_key?: string;
+  };
+}
+
+export interface ChooseSelector {
+  /**
+   * The choose selector allows the user to pick one of several selectors and provide a value for it.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#choose-selector
+   */
+  choose: {
+    /**
+     * A mapping of choice names to the selector used for that choice.
+     */
+    choices: Record<string, { selector: Selector }>;
+
+    /**
+     * Translation key used for translating the selector.
+     */
+    translation_key?: string;
+  };
+}
+
+export interface DeviceClassSelector {
+  /**
+   * The device class selector allows the user to pick one or more device classes of a given domain.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#device-class-selector
+   */
+  device_class: {
+    /**
+     * The domain to list device classes for.
+     */
+    domain:
+      | "binary_sensor"
+      | "button"
+      | "cover"
+      | "event"
+      | "humidifier"
+      | "infrared"
+      | "media_player"
+      | "number"
+      | "sensor"
+      | "switch"
+      | "update"
+      | "valve";
+
+    /**
+     * Allows selecting multiple device classes. If set to `true`, the resulting value of this selector will be a list.
+     */
+    multiple?: boolean;
+  };
+}
+
+export interface NumericThresholdSelector {
+  /**
+   * The numeric threshold selector allows the user to define a numeric threshold, using fixed numbers or entities.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#numeric-threshold-selector
+   */
+  numeric_threshold: {
+    /**
+     * `crossed`: value crossed a threshold. `changed`: value changed and matches the threshold. `is`: value matches the threshold.
+     */
+    mode: "crossed" | "changed" | "is";
+
+    /**
+     * Allowed units of measurement for the threshold values.
+     */
+    unit_of_measurement?: (string | null)[];
+
+    /**
+     * Configuration of the number input used for threshold values.
+     */
+    number?: NonNullable<NumberSelector["number"]>;
+
+    /**
+     * Filter(s) for the entities that can be used as threshold values.
+     */
+    entity?: EntitySelectorFilter | EntitySelectorFilter[];
+  };
+}
+
+export interface SerialPortSelector {
+  /**
+   * The serial port selector allows the user to pick a serial port.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#serial-port-selector
+   */
+  serial_port: {
+    /**
+     * Integration domains whose discovered ports are marked as recommended.
+     */
+    extra_recommended_domains?: string[];
+  } | null;
+}
+
+export interface StateClassSelector {
+  /**
+   * The state class selector allows the user to pick one or more sensor state classes.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#state-class-selector
+   */
+  state_class: {
+    /**
+     * Allows selecting multiple state classes. If set to `true`, the resulting value of this selector will be a list.
+     */
+    multiple?: boolean;
+
+    /**
+     * Limits the available state classes.
+     */
+    state_classes?: (
+      | "measurement"
+      | "measurement_angle"
+      | "total"
+      | "total_increasing"
+    )[];
+  } | null;
+}
+
+export interface StatisticSelector {
+  /**
+   * The statistic selector allows the user to pick one or more statistics.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#statistic-selector
+   */
+  statistic: {
+    /**
+     * Allows selecting multiple statistics. If set to `true`, the resulting value of this selector will be a list.
+     */
+    multiple?: boolean;
+  } | null;
+}
+
+export interface UnitOfMeasurementSelector {
+  /**
+   * The unit of measurement selector allows the user to pick a unit of measurement.
+   * https://www.home-assistant.io/docs/blueprint/selectors/#unit-of-measurement-selector
+   */
+  unit_of_measurement: {
+    /**
+     * Limits the units to those valid for the given sensor device class(es).
+     */
+    device_classes?: string | string[] | null;
+
+    /**
+     * Limits the units to those valid for the given sensor state class(es).
+     */
+    state_classes?: string | string[] | null;
+
+    /**
+     * Maps context keys to the names of the fields providing their value.
+     */
+    context?: {
+      filter_device_class?: string;
+      filter_state_class?: string;
+    };
+  } | null;
 }
