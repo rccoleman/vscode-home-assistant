@@ -303,6 +303,33 @@ export class HomeAssistantLanguageService {
     return diagnostics;
   };
 
+  /**
+   * Returns true when the given line is nested inside a `variables:` mapping.
+   * Variables contain user defined keys and values, which should not be
+   * validated as Home Assistant entities, areas, devices, floors or labels.
+   */
+  private isInVariablesBlock(lines: string[], lineIndex: number): boolean {
+    let indent = lines[lineIndex].search(/\S/);
+    if (indent <= 0) {
+      return false;
+    }
+    for (let i = lineIndex - 1; i >= 0 && indent > 0; i--) {
+      const candidate = lines[i];
+      const trimmed = candidate.trim();
+      if (trimmed === "" || trimmed.startsWith("#")) {
+        continue;
+      }
+      const candidateIndent = candidate.search(/\S/);
+      if (candidateIndent < indent) {
+        if (/^\s*(?:-\s+)?variables\s*:\s*(?:#.*)?$/.test(candidate)) {
+          return true;
+        }
+        indent = candidateIndent;
+      }
+    }
+    return false;
+  }
+
   private validateEntityIds = async (
     document: TextDocument,
   ): Promise<Diagnostic[]> => {
@@ -331,10 +358,15 @@ export class HomeAssistantLanguageService {
         if (line.trim().startsWith("#")) {
           continue;
         }
+
+        // Keys and values in a variables block are user defined, don't validate them
+        if (this.isInVariablesBlock(lines, lineIndex)) {
+          continue;
+        }
         
         // Find entity ID properties that need validation
         for (const propertyName of EntityIdCompletionContribution.propertyMatches) {
-          const propertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*([^\\s\\n#]+)`, "g");
+          const propertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*([^\\s\\n#]+)`, "g");
           let match;
           
           while ((match = propertyRegex.exec(line)) !== null) {
@@ -382,7 +414,7 @@ export class HomeAssistantLanguageService {
           }
           
           // Also check for entity arrays (entity_id: [entity1, entity2])
-          const arrayPropertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
+          const arrayPropertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
           let arrayMatch;
           
           while ((arrayMatch = arrayPropertyRegex.exec(line)) !== null) {
@@ -437,7 +469,7 @@ export class HomeAssistantLanguageService {
             const prevLine = lines[currentLineIndex];
             
             for (const propertyName of EntityIdCompletionContribution.propertyMatches) {
-              if (new RegExp(`\\s*${propertyName}\\s*:\\s*$`).test(prevLine)) {
+              if (new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*$`).test(prevLine)) {
                 foundEntityProperty = true;
                 break;
               }
@@ -527,11 +559,16 @@ export class HomeAssistantLanguageService {
         if (line.trim().startsWith("#")) {
           continue;
         }
+
+        // Keys and values in a variables block are user defined, don't validate them
+        if (this.isInVariablesBlock(lines, lineIndex)) {
+          continue;
+        }
         
         // Find area ID properties that need validation
         for (const propertyName of AreaCompletionContribution.propertyMatches) {
           // Check for single area values first: area_id: area_name
-          const propertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
+          const propertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
           let match;
           
           while ((match = propertyRegex.exec(line)) !== null) {
@@ -590,7 +627,7 @@ export class HomeAssistantLanguageService {
           }
           
           // Also check for area arrays (area_id: [area1, area2])
-          const arrayPropertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
+          const arrayPropertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
           let arrayMatch;
           
           while ((arrayMatch = arrayPropertyRegex.exec(line)) !== null) {
@@ -655,7 +692,7 @@ export class HomeAssistantLanguageService {
             const prevLine = lines[currentLineIndex];
             
             for (const propertyName of AreaCompletionContribution.propertyMatches) {
-              if (new RegExp(`\\s*${propertyName}\\s*:\\s*$`).test(prevLine)) {
+              if (new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*$`).test(prevLine)) {
                 foundAreaProperty = true;
                 break;
               }
@@ -755,11 +792,16 @@ export class HomeAssistantLanguageService {
         if (line.trim().startsWith("#")) {
           continue;
         }
+
+        // Keys and values in a variables block are user defined, don't validate them
+        if (this.isInVariablesBlock(lines, lineIndex)) {
+          continue;
+        }
         
         // Find device ID properties that need validation
         for (const propertyName of DeviceCompletionContribution.propertyMatches) {
           // Check for single device values first: device_id: device_name
-          const propertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
+          const propertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
           let match;
           
           while ((match = propertyRegex.exec(line)) !== null) {
@@ -818,7 +860,7 @@ export class HomeAssistantLanguageService {
           }
           
           // Also check for device arrays (device_id: [device1, device2])
-          const arrayPropertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
+          const arrayPropertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
           let arrayMatch;
           
           while ((arrayMatch = arrayPropertyRegex.exec(line)) !== null) {
@@ -883,7 +925,7 @@ export class HomeAssistantLanguageService {
             const prevLine = lines[currentLineIndex];
             
             for (const propertyName of DeviceCompletionContribution.propertyMatches) {
-              if (new RegExp(`\\s*${propertyName}\\s*:\\s*$`).test(prevLine)) {
+              if (new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*$`).test(prevLine)) {
                 foundDeviceProperty = true;
                 break;
               }
@@ -983,11 +1025,16 @@ export class HomeAssistantLanguageService {
         if (line.trim().startsWith("#")) {
           continue;
         }
+
+        // Keys and values in a variables block are user defined, don't validate them
+        if (this.isInVariablesBlock(lines, lineIndex)) {
+          continue;
+        }
         
         // Find floor ID properties that need validation
         for (const propertyName of FloorCompletionContribution.propertyMatches) {
           // Check for single floor values first: floor_id: floor_name
-          const propertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
+          const propertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
           let match;
           
           while ((match = propertyRegex.exec(line)) !== null) {
@@ -1046,7 +1093,7 @@ export class HomeAssistantLanguageService {
           }
           
           // Also check for floor arrays (floor_id: [floor1, floor2])
-          const arrayPropertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
+          const arrayPropertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
           let arrayMatch;
           
           while ((arrayMatch = arrayPropertyRegex.exec(line)) !== null) {
@@ -1111,7 +1158,7 @@ export class HomeAssistantLanguageService {
             const prevLine = lines[currentLineIndex];
             
             for (const propertyName of FloorCompletionContribution.propertyMatches) {
-              if (new RegExp(`\\s*${propertyName}\\s*:\\s*$`).test(prevLine)) {
+              if (new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*$`).test(prevLine)) {
                 foundFloorProperty = true;
                 break;
               }
@@ -1334,11 +1381,16 @@ export class HomeAssistantLanguageService {
         if (line.trim().startsWith("#")) {
           continue;
         }
+
+        // Keys and values in a variables block are user defined, don't validate them
+        if (this.isInVariablesBlock(lines, lineIndex)) {
+          continue;
+        }
         
         // Find label ID properties that need validation
         for (const propertyName of LabelCompletionContribution.propertyMatches) {
           // Check for single label values first: label_id: label_name
-          const propertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
+          const propertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
           let match;
           
           while ((match = propertyRegex.exec(line)) !== null) {
@@ -1402,7 +1454,7 @@ export class HomeAssistantLanguageService {
           }
           
           // Also check for label arrays (label_id: [label1, label2])
-          const arrayPropertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
+          const arrayPropertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
           let arrayMatch;
           
           while ((arrayMatch = arrayPropertyRegex.exec(line)) !== null) {
@@ -1472,7 +1524,7 @@ export class HomeAssistantLanguageService {
             const prevLine = lines[currentLineIndex];
             
             for (const propertyName of LabelCompletionContribution.propertyMatches) {
-              if (new RegExp(`\\s*${propertyName}\\s*:\\s*$`).test(prevLine)) {
+              if (new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*$`).test(prevLine)) {
                 foundLabelProperty = true;
                 break;
               }
@@ -1593,7 +1645,7 @@ export class HomeAssistantLanguageService {
         // Find action properties that need validation (both "service" and "action")
         for (const propertyName of ServicesCompletionContribution.propertyMatches) {
           // Check for single action values first: action: domain.action_name
-          const propertyRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
+          const propertyRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*([^\\s\\n#\\[]+)`, "g");
           let match;
           
           while ((match = propertyRegex.exec(line)) !== null) {
@@ -1655,7 +1707,7 @@ export class HomeAssistantLanguageService {
           }
           
           // Check for array values: action: [domain.action1, domain.action2]
-          const arrayRegex = new RegExp(`\\s*${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
+          const arrayRegex = new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*\\[([^\\]]+)\\]`, "g");
           let arrayMatch;
           
           while ((arrayMatch = arrayRegex.exec(line)) !== null) {
@@ -1725,7 +1777,7 @@ export class HomeAssistantLanguageService {
             const prevLine = lines[currentLineIndex];
             
             for (const propertyName of ServicesCompletionContribution.propertyMatches) {
-              if (new RegExp(`\\s*${propertyName}\\s*:\\s*$`).test(prevLine)) {
+              if (new RegExp(`(?<![\\w-])${propertyName}\\s*:\\s*$`).test(prevLine)) {
                 foundActionProperty = true;
                 break;
               }

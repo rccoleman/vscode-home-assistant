@@ -313,4 +313,43 @@ automation:
     assert.strictEqual(deviceDiagnostics.length, 0, 
       "Should not flag devices in commented lines");
   });
+
+  test("Should not warn for custom strings in a variables block", async () => {
+    const content = `
+script:
+  send_command:
+    variables:
+      device_map:
+        entity_id: remote.bedroom
+        audio_device: "Samsung TV"
+        device: unknown_device
+    sequence:
+      - action: remote.send_command
+        data:
+          command: mute
+`;
+
+    const document = TextDocument.create("file://test.yaml", "yaml", 1, content);
+    const diagnostics = await languageService.getDiagnostics(document);
+
+    const deviceDiagnostics = diagnostics.filter(d => d.code === "unknown-device");
+    assert.strictEqual(deviceDiagnostics.length, 0);
+  });
+
+  test("Should not match keys that merely end in device", async () => {
+    const content = `
+script:
+  send_command:
+    sequence:
+      - action: remote.send_command
+        data:
+          audio_device: "Samsung TV"
+`;
+
+    const document = TextDocument.create("file://test.yaml", "yaml", 1, content);
+    const diagnostics = await languageService.getDiagnostics(document);
+
+    const deviceDiagnostics = diagnostics.filter(d => d.code === "unknown-device");
+    assert.strictEqual(deviceDiagnostics.length, 0);
+  });
 });
